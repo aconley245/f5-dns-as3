@@ -5,9 +5,9 @@ See [F5 AS3 Docs](https://clouddocs.f5.com/products/extensions/f5-appsvcs-extens
 
 # Running f5-dns-as3
 
-'''
+```
 pip install -r requirements.txt
-'''
-'''
+```
+```
 python3 main.py
-'''
+```
