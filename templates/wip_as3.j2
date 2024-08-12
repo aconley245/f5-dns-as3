@@ -1,0 +1,47 @@
+{
+    "class": "AS3",
+    "action": "deploy",
+    "persist": true,
+    "declaration": {
+        "class": "ADC",
+        "schemaVersion": "3.25.0",
+        "id": "{{job_name}}",
+{% if dry_run is defined %}
+{% if dry_run is true %}
+        "controls": {
+            "dryRun": true,
+            "traceResponse": true
+        },
+{% endif %}
+{% endif %}
+        "{{tenant_name}}": {
+            "class": "Tenant",
+            "Application": {
+                "class": "Application",
+                "{{domain_name}}": {
+                    "class": "GSLB_Domain",
+                    "domainName": "{{domain_name}}",
+                    "resourceRecordType": "A",
+                    "poolLbMode": "ratio",
+                    "pools": [
+                        {
+                            "use": "{{pool_name}}"
+                        }
+                    ]
+                },
+                "{{pool_name}}": {
+                    "class": "GSLB_Pool",
+                    "resourceRecordType": "A",
+                    "members": [
+                        {
+                            "server": {
+                                "bigip": "/Common/{{server_name}}"
+                            },
+                            "virtualServer": "{{vs_name}}"
+                        }
+                    ]
+                }
+            }
+        }
+    }
+}
