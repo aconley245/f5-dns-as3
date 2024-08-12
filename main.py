@@ -7,6 +7,7 @@ from jinja2 import Environment, FileSystemLoader
 from os import path
 from pprint import pprint
 
+# Disable warnings for self signed cert
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 def get_token(bigip, url, creds):
