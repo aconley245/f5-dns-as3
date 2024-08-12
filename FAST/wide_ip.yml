@@ -1,0 +1,69 @@
+title: A Record Wide IP
+description: FAST for creating an A Record Wide IP
+parameters:
+  tenant_name: default tenant name
+  dns_name: Fully Qualified DNS name
+  pool_name: Pool Name
+  server_name: Existing GTM Server Name
+  vs_name: Existing Virtual Server Name
+definitions: 
+  tenant_name:
+    title: Tenant Name
+    type: string
+    description: Partition on BigIP
+  dns_name:
+    title: DNS FQDN
+    type: string
+    description: Fully Qualified DNS Name for Wide IP
+  pool_name:
+    title: Pool name
+    type: string
+    description: Wide IP Pool Name
+  server_name:
+    title: GTM Server Name
+    type: string
+    description: Existing GTM Server Name
+  vs_name:
+    title: Virtual Server Name
+    type: string
+    description: Existing Virtual Server Name
+template: | 
+  {
+    "class": "AS3",
+    "action": "deploy",
+    "persist": true,
+    "declaration": {
+      "class": "ADC",
+      "schemaVersion": "3.25.0",
+      "id": "job13",
+      "{{tenant_name}}": {
+        "class": "Tenant",
+        "Application": {
+          "class": "Application",
+          "{{dns_name}}": {
+            "class": "GSLB_Domain",
+            "domainName": "{{dns_name}}",
+            "resourceRecordType": "A",
+            "poolLbMode": "ratio",
+            "pools": [
+              {
+                "use": "{{pool_name}}"
+              }
+            ]
+          },
+          "{{pool_name}}": {
+            "class": "GSLB_Pool",
+            "resourceRecordType": "A",
+            "members": [
+              {
+                "server": {
+                  "bigip": "/Common/{{server_name}}"
+                },
+                "virtualServer": "{{vs_name}}"
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
