@@ -106,7 +106,7 @@ def main():
     
     # Check if a new wide IP needs to be created using AS3
     print('\n\n')
-    create_wip = input('Do You Want to Create a New Wide IP (y/n)? ')
+    create_wip = input('Do You Want to Create a New Wide IP using AS3 (y/n)? ')
     if create_wip.lower() == 'y':
         # Check AS3 Version
         url_as3_ver = f'{url_base}/shared/appsvcs/info'
@@ -163,6 +163,70 @@ def main():
             print(f'\n\nWide IP {domain_name} Successfully Created')
             if dry_run == True:
                 pprint(f'\nDry Run Details:\n{wip_create_data}')
+        else:
+            print(f'\n\nError: {response.content}')
+    
+    # Check if a new wide IP needs to be created using FAST
+    print('\n\n')
+    create_wip_fast = input('Do You Want to Create a New Wide IP using FAST (y/n)? ')
+    if create_wip_fast.lower() == 'y':
+        # Check AS3 Version
+        url_as3_ver = f'{url_base}/shared/appsvcs/info'
+        response, as3_ver = bigip_get(b, url_as3_ver)
+        if response.status_code == 200:
+            print(f'\n\nAS3 Version: {as3_ver['version']}')
+        else:
+            print('\n\nAS3 Not installed.  Please install AS3 before proceeding')
+            quit()
+        # Check FAST Version
+        url_fast_ver = f'{url_base}/shared/fast/info'
+        response, fast_ver = bigip_get(b, url_fast_ver)
+        if response.status_code == 200:
+            print(f'\n\nFAST Version: {fast_ver['version']}')
+        else:
+            print('\n\nFAST Not installed.  Please install FAST before proceeding')
+            quit()
+
+        # Get Inputs for FAST
+        print('\n\n')
+        job_name = input('Job Name: ')
+        print('\n')
+        tenant_name = input('Tenant Name: ')
+        print('\n')
+        domain_name = input('Fully Qualified Domain Name for Wide IP: ')
+        print('\n')
+        pool_name = input('Pool Name for Wide IP Pool: ')
+        
+        # Test if GTM Server name has been defined
+        try:
+            server_name
+        except NameError:
+            print('\n')
+            server_name = input('Existing GTM Server Name: ')
+
+        # Test if VS name has been defined
+        try:
+            vs_name
+        except NameError:
+            print('\n')
+            existing_vs = get_bigip_gtm_vs(b, url_base, server_name)
+            print(f'\nExisting Virtual Server Names: {existing_vs}')
+            print('\n')
+            vs_name = input('GTM Virtual Server Name: ')
+        
+        # Render the Jinja Template
+        jinja_env = Environment(loader=FileSystemLoader("templates/"))
+        wip_fast_template = jinja_env.get_template("wip_fast.j2")
+        wip_fast_payload = wip_fast_template.render(tenant_name=tenant_name, domain_name=domain_name, pool_name=pool_name, server_name=server_name, vs_name=vs_name)
+        output_path = path.join(path.dirname(__file__),f'outputs/{job_name}.json')
+        with open(output_path, 'w') as output_file:
+            output_file.write(wip_fast_payload)
+        
+        # Post the Jinja Template
+        url_fast_declare = f'{url_base}/shared/fast/applications'
+        response,wip_create_data = bigip_post(b, url_fast_declare, wip_fast_payload)
+        if response.status_code == 202:
+            print(f'\n\nWide IP {domain_name} Successfully Created')
         else:
             print(f'\n\nError: {response.content}')
 
