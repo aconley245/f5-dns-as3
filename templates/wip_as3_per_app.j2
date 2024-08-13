@@ -1,0 +1,38 @@
+{
+    "schemaVersion": "3.50.0",
+    "id": "{{job_name}}",
+{% if dry_run is defined %}
+{% if dry_run is true %}
+    "controls": {
+        "dryRun": true,
+        "traceResponse": true
+    },
+{% endif %}
+{% endif %}
+    "Application1": {
+        "class": "Application",
+        "{{domain_name}}": {
+            "class": "GSLB_Domain",
+            "domainName": "{{domain_name}}",
+            "resourceRecordType": "A",
+            "poolLbMode": "ratio",
+            "pools": [
+                {
+                    "use": "{{pool_name}}"
+                }
+            ]
+        },
+        "{{pool_name}}": {
+            "class": "GSLB_Pool",
+            "resourceRecordType": "A",
+            "members": [
+                {
+                    "server": {
+                        "bigip": "/Common/{{server_name}}"
+                    },
+                    "virtualServer": "{{vs_name}}"
+                }
+            ]
+        }
+    }  
+}

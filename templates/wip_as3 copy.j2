@@ -1,11 +1,9 @@
 {
-{% if std_as3 is true %}
     "class": "AS3",
     "action": "deploy",
     "persist": true,
     "declaration": {
         "class": "ADC",
-{% endif %}
         "schemaVersion": "3.50.0",
         "id": "{{job_name}}",
 {% if dry_run is defined %}
@@ -16,11 +14,9 @@
         },
 {% endif %}
 {% endif %}
-{% if std_as3 is true %}
         "{{tenant_name}}": {
             "class": "Tenant",
-{% endif %}
-            "{{app_name}}": {
+            "Application1": {
                 "class": "Application",
                 "{{domain_name}}": {
                     "class": "GSLB_Domain",
@@ -46,8 +42,6 @@
                     ]
                 }
             }
-{% if std_as3 is true %}       
         }
     }
-{% endif %}
 }

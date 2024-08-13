@@ -36,8 +36,25 @@ def get_bigip_gtm_vs(bigip, url_base, gtm_server):
     existing_vs = []
     for item in vs_data['items']:
         existing_vs.append(item['name'])
-    # print(f'\nExisting Virtual Server Names: {existing_vs}')
     return existing_vs
+
+def check_bigip_tenant(bigip, url_base, tenant):
+    url_tenant = f'{url_base}/tm/auth/partition'
+    response, tenant_data = bigip_get(bigip, url_tenant)
+    tenants = []
+    for item in tenant_data['items']:
+        tenants.append(item['name'])
+    tenant_exists = False
+    if tenant in tenants:
+        tenant_exists = True
+    return tenant_exists
+
+def enable_per_app_as3(bigip, url_base):
+    url_per_app_as3 = f'{url_base}/shared/appsvcs/settings'
+    response, per_app_as3_data = bigip_get(bigip, url_per_app_as3)
+    if per_app_as3_data['perAppDeploymentAllowed'] != True:
+        bigip_post(bigip, url_per_app_as3, '{{ "perAppDeploymentAllowed": true }}')
+    return
 
 def main():
     # Get BIG-IP Login Information
@@ -61,7 +78,7 @@ def main():
     b.auth = None
     b.headers.update({'X-F5-Auth-Token': token})
   
-    # Check if a New VS Needs to be created
+    # Prompt if a New VS Needs to be created
     print('\n\n')
     create_vs = input('Do You Want to Create a New GTM Virtual Server (y/n)? ')
     if create_vs.lower() == 'y':
@@ -105,7 +122,7 @@ def main():
             else:
                 print(f'\n\nError: {response.content}')
     
-    # Check if a new wide IP needs to be created using AS3
+    # Prompt if a new wide IP needs to be created using AS3
     print('\n\n')
     create_wip = input('Do You Want to Create a New Wide IP using AS3 (y/n)? ')
     if create_wip.lower() == 'y':
@@ -124,10 +141,27 @@ def main():
         print('\n')
         tenant_name = input('Tenant Name: ')
         print('\n')
+        app_name = input('Application Name: ')
+        print('\n')
         domain_name = input('Fully Qualified Domain Name for Wide IP: ')
         print('\n')
         pool_name = input('Pool Name for Wide IP Pool: ')
         
+        # Check if Tenant Exists
+        tenant_exists = check_bigip_tenant(b, url_base, tenant_name)
+        std_as3 = True
+        if tenant_exists:
+            print('\n')
+            use_per_app = input('Do you want to use a per application AS3 declaration (y/n)?')
+            if use_per_app.lower() == 'y':
+                std_as3 = False
+                enable_per_app_as3(b, url_base)
+                url_as3_declare = f'{url_base}/shared/appsvcs/declare/{tenant_name}/applications'
+            else:
+                url_as3_declare = f'{url_base}/shared/appsvcs/declare'
+        else:
+            url_as3_declare = f'{url_base}/shared/appsvcs/declare'
+
         # Test if GTM Server name has been defined
         try:
             server_name
@@ -152,13 +186,12 @@ def main():
         # Render the Jinja Template
         jinja_env = Environment(loader=FileSystemLoader("templates/"))
         wip_as3_template = jinja_env.get_template("wip_as3.j2")
-        wip_as3_payload = wip_as3_template.render(job_name=job_name, tenant_name=tenant_name, domain_name=domain_name, pool_name=pool_name, server_name=server_name, vs_name=vs_name, dry_run=dry_run)
+        wip_as3_payload = wip_as3_template.render(std_as3=std_as3, app_name=app_name, job_name=job_name, tenant_name=tenant_name, domain_name=domain_name, pool_name=pool_name, server_name=server_name, vs_name=vs_name, dry_run=dry_run)
         output_path = path.join(path.dirname(__file__),f'outputs/{job_name}.json')
         with open(output_path, 'w') as output_file:
             output_file.write(wip_as3_payload)
         
         # Post the Jinja Template
-        url_as3_declare = f'{url_base}/shared/appsvcs/declare'
         response,wip_create_data = bigip_post(b, url_as3_declare, wip_as3_payload)
         if response.status_code == 200:
             print(f'\n\nWide IP {domain_name} Successfully Created')
@@ -167,7 +200,7 @@ def main():
         else:
             print(f'\n\nError: {response.content}')
     
-    # Check if a new wide IP needs to be created using FAST
+    # Prompt if a new wide IP needs to be created using FAST
     print('\n\n')
     create_wip_fast = input('Do You Want to Create a New Wide IP using FAST (y/n)? ')
     if create_wip_fast.lower() == 'y':
